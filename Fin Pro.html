@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinLedger Pro — Multi-Page Personal Finance Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg-base: #090d16;
+      --bg-card: #111827;
+      --border-muted: #1f2937;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      color: #f3f4f6;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Smooth Page Transitions */
+    .page-view {
+      display: none;
+      animation: fadeSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .page-view.active {
+      display: block;
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* Interactive SVG Donut Chart Slices */
+    .donut-slice {
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      transform-origin: center;
+      cursor: pointer;
+    }
+    .donut-slice:hover {
+      transform: scale(1.045);
+      filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.25));
+    }
+
+    /* Progress Bar Shimmer */
+    .progress-fill {
+      transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col lg:flex-row bg-slate-950 text-slate-100">
+
+  <!-- Confetti Canvas Overlay -->
+  <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 border border-emerald-500/40 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-medium">
+    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+    <span id="toastMsg">Transaction logged!</span>
+  </div>
+
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="w-full lg:w-64 bg-slate-900/90 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col justify-between shrink-0 sticky top-0 z-30 lg:h-screen">
+    <div>
+      <!-- Brand Header -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold mono text-lg shadow-lg shadow-emerald-950/60">
+            FL
+          </div>
+          <div>
+            <h1 class="text-base font-bold tracking-tight text-white leading-none">FinLedger Pro</h1>
+            <span class="text-[11px] text-emerald-400 font-medium mono">v2.5 Multi-Page Suite</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 flex lg:flex-col gap-1.5 overflow-x-auto" id="navMenu">
+        <button onclick="navigateTo('command')" data-page="command" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition whitespace-nowrap bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+          <span>📊</span>
+          <span>1. Command Center</span>
+        </button>
+        <button onclick="navigateTo('logger')" data-page="logger" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent">
+          <span>⚡</span>
+          <span>2. Smart Logger Hub</span>
+        </button>
+        <button onclick="navigateTo('analytics')" data-page="analytics" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent">
+          <span>🍩</span>
+          <span>3. Visual Analytics</span>
+        </button>
+        <button onclick="navigateTo('vault')" data-page="vault" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent">
+          <span>🎯</span>
+          <span>4. Savings Vault</span>
+        </button>
+        <button onclick="navigateTo('ledger')" data-page="ledger" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent">
+          <span>🗂️</span>
+          <span>5. Master Ledger</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Global Controls in Sidebar Footer -->
+    <div class="hidden lg:block p-4 border-t border-slate-800 space-y-3 bg-slate-950/50">
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">Normalize Cats</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="normalizeToggle" class="sr-only peer" onchange="renderApp()">
+          <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+        </label>
+      </div>
+      <p class="text-[10px] text-slate-500 leading-relaxed">
+        Merges <code class="text-slate-300">Accessory</code> + <code class="text-slate-300">Accessories</code> in charts while preserving raw rows.
+      </p>
+      <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
+        <span class="text-slate-400">Live Balance</span>
+        <span id="sidebarBalance" class="mono font-bold text-emerald-400">$0.00</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT WORKSPACE -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- Top Global Filter Bar -->
+    <header class="bg-slate-900/60 border-b border-slate-800 px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur">
+      <div class="flex items-center gap-3">
+        <h2 id="activePageTitle" class="text-sm sm:text-base font-bold text-white">1. Command Center</h2>
+        <span id="rowCountBadge" class="text-[11px] mono bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700">61 rows</span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Currency Switcher -->
+        <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-xs mono">
+          <button onclick="setCurrency('$')" id="curUSD" class="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-semibold">$ USD</button>
+          <button onclick="setCurrency('₵')" id="curGHS" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-white">₵ GHS</button>
+        </div>
+
+        <!-- Period Selector -->
+        <select id="globalPeriod" onchange="renderApp()" class="bg-slate-950 border border-slate-700 text-xs font-medium text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none">
+          <option value="ALL">All-Time Ledger</option>
+        </select>
+
+        <!-- Quick Action Button -->
+        <button onclick="navigateTo('logger')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg transition shadow-sm">
+          + Log Entry
+        </button>
+      </div>
+    </header>
+
+    <!-- PAGES CONTAINER -->
+    <main class="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
+
+      <!-- =================================================================== -->
+      <!-- PAGE 1: COMMAND CENTER (EXECUTIVE OVERVIEW)                         -->
+      <!-- =================================================================== -->
+      <section id="page-command" class="page-view active space-y-6">
+        <!-- Master Savings Completion Banner -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
+          <div class="flex flex-wrap items-center justify-between gap-4 mb-2">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-widest text-emerald-400">Master Savings Progress</span>
+              <h3 class="text-base font-bold text-white mt-0.5">Combined Savings Vault Completion Bar</h3>
+            </div>
+            <div class="text-right">
+              <span id="masterSavedText" class="text-lg font-extrabold mono text-emerald-400">$251.00 / $5,250.00</span>
+              <span id="masterSavedPct" class="ml-2 text-xs mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-semibold">4.8%</span>
+            </div>
+          </div>
+          <div class="w-full h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+            <div id="masterProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-sky-400 rounded-full progress-fill" style="width: 5%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] mono text-slate-500 mt-1.5">
+            <span>0% Start</span>
+            <span>25% Milestone</span>
+            <span>50% Halfway</span>
+            <span>75% Strong</span>
+            <span>100% Target</span>
+          </div>
+        </div>
+
+        <!-- 4 Core KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-medium text-slate-400 uppercase">Total Income</span>
+              <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded mono">IN</span>
+            </div>
+            <p id="kpiIncome" class="text-2xl font-extrabold text-emerald-400 mono mt-2">$0.00</p>
+            <p id="kpiIncomeCount" class="text-[11px] text-slate-500 mt-1">0 income entries</p>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-medium text-slate-400 uppercase">Total Expenses</span>
+              <span class="text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded mono">OUT</span>
+            </div>
+            <p id="kpiExpense" class="text-2xl font-extrabold text-rose-400 mono mt-2">$0.00</p>
+            <p id="kpiExpenseCount" class="text-[11px] text-slate-500 mt-1">0 expense entries</p>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-medium text-slate-400 uppercase">Total Saved</span>
+              <span class="text-xs bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded mono">VAULT</span>
+            </div>
+            <p id="kpiSaved" class="text-2xl font-extrabold text-sky-400 mono mt-2">$0.00</p>
+            <p id="kpiSavingsRate" class="text-[11px] text-slate-500 mt-1">0% of total income saved</p>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-medium text-slate-400 uppercase">Current Balance</span>
+              <span class="text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded mono">LIVE</span>
+            </div>
+            <p id="kpiBalance" class="text-2xl font-extrabold text-white mono mt-2">$0.00</p>
+            <p id="kpiBurnRunway" class="text-[11px] text-slate-500 mt-1">Latest running ledger balance</p>
+          </div>
+        </div>
+
+        <!-- Daily Cashflow Bar Chart & Running Balance Sparkline -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Cashflow Grouped Bar Chart (7 cols) -->
+          <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-sm font-bold text-white">Daily Cashflow Bar Chart (In vs. Out)</h3>
+                <p class="text-xs text-slate-400">Grouped daily comparison of Income, Expenses, and Savings</p>
+              </div>
+              <div class="flex items-center gap-3 text-[11px]">
+                <span class="flex items-center gap-1 text-emerald-400"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>Income</span>
+                <span class="flex items-center gap-1 text-rose-400"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>Expense</span>
+                <span class="flex items-center gap-1 text-sky-400"><span class="w-2.5 h-2.5 rounded-sm bg-sky-400"></span>Savings</span>
+              </div>
+            </div>
+            <div id="dailyCashflowChart" class="h-64 flex items-end gap-2 pt-6 pb-2 px-2 overflow-x-auto border-b border-slate-800"></div>
+          </div>
+
+          <!-- Running Balance Trajectory & Recent Activity (5 cols) -->
+          <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-white">Running Balance Trajectory</h3>
+              <p class="text-xs text-slate-400 mb-3">Visual curve of the <code class="text-emerald-400">Balance</code> column across transactions</p>
+              <div id="balanceSparklineContainer" class="h-36 bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 flex items-center justify-center"></div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-800">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Latest 4 Transactions</span>
+                <button onclick="navigateTo('ledger')" class="text-xs text-emerald-400 hover:underline">View All &rarr;</button>
+              </div>
+              <div id="recentMiniList" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- PAGE 2: SMART LOGGER & AUTOMATION HUB                               -->
+      <!-- =================================================================== -->
+      <section id="page-logger" class="page-view space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Left Column: Conversational NLP + Manual Form + Auto-Split (7 cols) -->
+          <div class="lg:col-span-7 space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                  <span class="text-[11px] font-semibold uppercase tracking-widest text-emerald-400">Ingestion Engine</span>
+                  <h3 class="text-base font-bold text-white">Conversational NLP &amp; Structured Logger</h3>
+                </div>
+                <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                  <button id="btnModeNLP" onclick="setLoggerMode('NLP')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold">Conversational Prompt</button>
+                  <button id="btnModeForm" onclick="setLoggerMode('FORM')" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-semibold">Manual Form</button>
+                </div>
+              </div>
+
+              <!-- Auto-Split Rule Toggle (10% Tithe + 30% SGSE on Income) -->
+              <div class="mb-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3.5 flex items-center justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-emerald-300">⚡ Auto-Split New Income Rule (30% SGSE Savings + 10% Tithe)</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-0.5">
+                    Mirrors your ledger habit: whenever an <code class="text-emerald-300">Income</code> entry is logged, automatically append a 30% <code class="text-sky-300">SGSE</code> Savings row and a 10% <code class="text-rose-300">Tithe</code> Expense row.
+                  </p>
+                </div>
+                <input type="checkbox" id="autoSplitIncome" class="w-5 h-5 accent-emerald-500 rounded cursor-pointer shrink-0" />
+              </div>
+
+              <!-- NLP Mode -->
+              <div id="loggerNLPBox" class="space-y-4">
+                <form onsubmit="submitNLPLogger(event)" class="space-y-3">
+                  <label class="block text-xs font-medium text-slate-300">Type a transaction in plain English:</label>
+                  <div class="flex flex-col sm:flex-row gap-2.5">
+                    <input
+                      id="nlpPromptInput"
+                      type="text"
+                      oninput="updateLiveParseCard()"
+                      placeholder='e.g. "Spent $15 on Transport to Circle" or "Saved $100 for Emergency Fund"'
+                      class="flex-1 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+                      required
+                    />
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition shadow-lg shadow-emerald-950/50">
+                      Commit Row
+                    </button>
+                  </div>
+                </form>
+
+                <!-- Live Parse Diagnostic Card -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Live 7-Column Schema Preview</span>
+                    <span id="parseConfidence" class="text-[11px] mono text-emerald-400">Ready</span>
+                  </div>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                      <span class="text-[10px] text-slate-500 block">1. Date</span>
+                      <span id="pDate" class="mono font-semibold text-slate-200">—</span>
+                    </div>
+                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                      <span class="text-[10px] text-slate-500 block">2. Type</span>
+                      <span id="pType" class="mono font-semibold text-rose-400">—</span>
+                    </div>
+                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                      <span class="text-[10px] text-slate-500 block">3. Category</span>
+                      <span id="pCat" class="font-semibold text-slate-200">—</span>
+                    </div>
+                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 sm:col-span-2">
+                      <span class="text-[10px] text-slate-500 block">4. Description</span>
+                      <span id="pDesc" class="text-slate-300 italic">—</span>
+                    </div>
+                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                      <span class="text-[10px] text-slate-500 block">5/6. Value &rarr; 7. New Bal</span>
+                      <span id="pVal" class="mono font-bold text-emerald-400">$0.00</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Structured Form Mode -->
+              <form id="loggerFormBox" onsubmit="submitManualForm(event)" class="hidden space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1">1. Date (YYYY-MM-DD)</label>
+                    <input id="mDate" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white mono" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1">2. Transaction Type</label>
+                    <select id="mType" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white">
+                      <option value="Expense">Expense (Populates Money Out)</option>
+                      <option value="Income">Income (Populates Money In)</option>
+                      <option value="Savings">Savings (Populates Money Out &amp; Goals)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1">3. Category / Goal Name</label>
+                    <input id="mCat" list="allCategoriesDatalist" placeholder="e.g. Transport or Emergency Fund" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white" />
+                    <datalist id="allCategoriesDatalist"></datalist>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1">5/6. Amount</label>
+                    <input id="mAmt" type="number" step="0.01" min="0.01" placeholder="25.00" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white mono" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="block text-xs text-slate-400 mb-1">4. Description</label>
+                    <input id="mDesc" type="text" placeholder="e.g. Ride to Circle / From Sis P / Screen glass" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white" />
+                  </div>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition">
+                  Append to Transactions Ledger
+                </button>
+              </form>
+            </div>
+
+            <!-- Automated JSON Receipt / Webhook Payload Ingestor -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-bold text-white">🤖 Automated Ride / Webhook JSON Parser</h3>
+                <button onclick="loadSampleUberJSON()" class="text-xs text-emerald-400 hover:underline">Load Sample Uber JSON</button>
+              </div>
+              <p class="text-xs text-slate-400 mb-3">
+                Paste raw JSON from an Uber/Bolt scraper or n8n/Make webhook (like row 61 in your sheet) to normalize it into the 7 ledger columns instead of breaking the sheet structure.
+              </p>
+              <div class="flex flex-col sm:flex-row gap-2.5">
+                <textarea id="jsonReceiptInput" rows="2" placeholder='{"service": "Uber", "date": "Aug 30, 2026", "amount": "GHS 21.00", "pickup": "Independence Avenue", "dropoff": "Ring Rd W"}' class="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs mono text-slate-200 focus:outline-none"></textarea>
+                <button onclick="ingestJSONReceipt()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shrink-0">
+                  Normalize &amp; Log
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: 1-Tap Quick-Log Presets (5 cols) -->
+          <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-widest text-sky-400">Accra Daily Speed-Pad</span>
+              <h3 class="text-base font-bold text-white mt-0.5 mb-1">1-Tap Frequent Transactions</h3>
+              <p class="text-xs text-slate-400 mb-4">Click any preset below to immediately log common entries from your historical ledger.</p>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="quickPresetGrid"></div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800 text-xs text-slate-400 space-y-1">
+              <div class="font-semibold text-slate-200">Pro Tip:</div>
+              <p>Turn on the <strong>Auto-Split New Income Rule</strong> on the left before tapping <em>"Dad Pocket (+$60)"</em> to watch it automatically log your +$60 Income, -$18 SGSE Savings, and -$6 Tithe in a single click.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- PAGE 3: VISUAL ANALYTICS STUDIO (PIE / BAR / GADGET FLIPPING)       -->
+      <!-- =================================================================== -->
+      <section id="page-analytics" class="page-view space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Interactive SVG Donut Chart (5 cols) -->
+          <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-between">
+            <div class="w-full flex items-center justify-between mb-2">
+              <div>
+                <h3 class="text-sm font-bold text-white">Expense Distribution Donut</h3>
+                <p class="text-xs text-slate-400">Hover or click any slice to inspect category share</p>
+              </div>
+              <span id="donutSliceBadge" class="text-[11px] mono bg-slate-800 px-2.5 py-1 rounded text-emerald-400">All Categories</span>
+            </div>
+
+            <!-- SVG Donut Container -->
+            <div class="relative w-64 h-64 my-2 flex items-center justify-center">
+              <svg id="expenseDonutSVG" viewBox="-1.2 -1.2 2.4 2.4" class="w-full h-full -rotate-90"></svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-6">
+                <span id="donutCenterLabel" class="text-[11px] uppercase tracking-wider text-slate-400">Total Spent</span>
+                <span id="donutCenterValue" class="text-xl font-extrabold mono text-white mt-0.5">$0.00</span>
+                <span id="donutCenterPct" class="text-[11px] mono text-rose-400 mt-0.5">100%</span>
+              </div>
+            </div>
+
+            <!-- Interactive Legend -->
+            <div id="donutLegend" class="w-full grid grid-cols-2 gap-2 pt-3 border-t border-slate-800 text-xs"></div>
+          </div>
+
+          <!-- Ranked Horizontal Bar Chart & Personal vs Inventory Filter (7 cols) -->
+          <div class="lg:col-span-7 space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 class="text-sm font-bold text-white">Category Ranked Bar Comparison</h3>
+                  <p class="text-xs text-slate-400">Click any bar to filter the Master Ledger to that category</p>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-slate-300 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer">
+                  <input type="checkbox" id="excludeInventoryToggle" onchange="renderApp()" class="accent-emerald-500 rounded" />
+                  <span>Hide Tech Inventory Costs (Accessories)</span>
+                </label>
+              </div>
+
+              <div id="analyticsBarChart" class="space-y-3 max-h-[310px] overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- Gadget Flipping & Tech Margin Analyzer (Tailored Card) -->
+            <div class="bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-indigo-500/30 rounded-2xl p-6">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-400">iHub+ &amp; Tech Margin Tracker</span>
+                  <h3 class="text-sm font-bold text-white">Gadget Sales vs. Accessory / Parts Outlay</h3>
+                </div>
+                <span id="gadgetNetBadge" class="text-xs mono font-bold px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Net +$0.00</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                  <span class="text-slate-400 block">Gadget Sales Revenue</span>
+                  <span id="gadgetRev" class="text-lg font-bold mono text-emerald-400 mt-1 block">$340.00</span>
+                  <span class="text-[11px] text-slate-500">Laptop For Nii, Ben's watch</span>
+                </div>
+                <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                  <span class="text-slate-400 block">Accessories / Parts Cost</span>
+                  <span id="gadgetCost" class="text-lg font-bold mono text-rose-400 mt-1 block">$155.00</span>
+                  <span class="text-[11px] text-slate-500">Chargers, Screen glass, Lens film</span>
+                </div>
+                <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                  <span class="text-slate-400 block">Gross Margin %</span>
+                  <span id="gadgetMarginPct" class="text-lg font-bold mono text-indigo-300 mt-1 block">54.4%</span>
+                  <span class="text-[11px] text-slate-500">Net contribution to cashflow</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- PAGE 4: SAVINGS VAULT & GOAL SIMULATOR                              -->
+      <!-- =================================================================== -->
+      <section id="page-vault" class="page-view space-y-6">
+        <!-- Top Action Bar + Unallocated Savings Reallocator -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-[11px] font-semibold uppercase tracking-widest text-sky-400">Goal-Linked Ledger Aggregation</span>
+            <h3 class="text-base font-bold text-white">Savings Goals Tracker &amp; Reallocation Bridge</h3>
+            <p class="text-xs text-slate-400">
+              Automatically sums rows where <code class="text-sky-400">Type = "Savings"</code> and <code class="text-sky-400">Category = Goal Name</code>.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button onclick="reallocateSGSEToGoal()" class="text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-3.5 py-2 rounded-xl font-semibold transition">
+              🔄 Transfer SGSE/Option 1 ($251) to Named Goal
+            </button>
+            <button onclick="addNewSavingsGoal()" class="text-xs bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-xl font-semibold transition">
+              + Create New Goal
+            </button>
+          </div>
+        </div>
+
+        <!-- Goal Cards Grid -->
+        <div id="vaultGoalsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+        <!-- Interactive What-If Savings Goal Simulator -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-widest text-emerald-400">Interactive Forecaster</span>
+              <h3 class="text-base font-bold text-white">Savings Goal Completion Simulator</h3>
+              <p class="text-xs text-slate-400">Drag the sliders below to see how fast you will hit each target based on weekly deposits.</p>
+            </div>
+            <span id="simSummaryBadge" class="text-xs mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-lg font-semibold">
+              $200 / month projected
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div class="lg:col-span-5 space-y-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Weekly Savings Deposit:</span>
+                  <span id="simWeeklyVal" class="mono font-bold text-emerald-400">$50 / wk</span>
+                </div>
+                <input id="simWeeklySlider" type="range" min="10" max="300" step="5" value="50" oninput="updateGoalSimulator()" class="w-full accent-emerald-500 cursor-pointer" />
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">One-Time Side-Hustle Boost:</span>
+                  <span id="simBoostVal" class="mono font-bold text-sky-400">$100</span>
+                </div>
+                <input id="simBoostSlider" type="range" min="0" max="1000" step="25" value="100" oninput="updateGoalSimulator()" class="w-full accent-sky-400 cursor-pointer" />
+              </div>
+            </div>
+
+            <div id="simResultsGrid" class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- PAGE 5: MASTER LEDGER DATABASE (GOOGLE SHEETS 7-COLUMN MIRROR)      -->
+      <!-- =================================================================== -->
+      <section id="page-ledger" class="page-view space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex flex-wrap items-center gap-2">
+              <input
+                id="ledgerSearch"
+                type="text"
+                oninput="renderApp()"
+                placeholder="Search category, description, or date..."
+                class="bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none w-64"
+              />
+              <select id="ledgerTypeFilter" onchange="renderApp()" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
+                <option value="ALL">All Types (Income / Expense / Savings)</option>
+                <option value="Income">Income Only</option>
+                <option value="Expense">Expense Only</option>
+                <option value="Savings">Savings Only</option>
+              </select>
+              <button id="clearCategoryFilterBtn" onclick="clearCategoryFilter()" class="hidden text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-lg">
+                Clear Filter ✕
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="exportLedgerCSV()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-2 rounded-xl font-medium transition">
+                ⬇ Export 7-Col CSV
+              </button>
+              <button onclick="resetAllData()" class="text-xs bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-800/50 px-3.5 py-2 rounded-xl font-medium transition">
+                Reset to Original Sheet
+              </button>
+            </div>
+          </div>
+
+          <!-- 7-Column Table -->
+          <div class="overflow-x-auto max-h-[600px] overflow-y-auto border border-slate-800 rounded-xl">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-950 sticky top-0 z-10 border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
+                <tr>
+                  <th class="py-3 px-3">#</th>
+                  <th class="py-3 px-3">1. Date</th>
+                  <th class="py-3 px-3">2. Type</th>
+                  <th class="py-3 px-3">3. Category</th>
+                  <th class="py-3 px-3">4. Description</th>
+                  <th class="py-3 px-3 text-right">5. Money In</th>
+                  <th class="py-3 px-3 text-right">6. Money Out</th>
+                  <th class="py-3 px-3 text-right">7. Balance</th>
+                  <th class="py-3 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="masterLedgerBody" class="divide-y divide-slate-800/60 text-xs"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. SANDBOX-SAFE STORAGE & INITIAL SEED DATA (61 GOOGLE SHEETS ROWS)
+    // =========================================================================
+    const memoryStore = {};
+    function safeGet(key) {
+      try { return localStorage.getItem(key); } catch (e) { return memoryStore[key] || null; }
+    }
+    function safeSet(key, val) {
+      try { localStorage.setItem(key, val); } catch (e) { memoryStore[key] = val; }
+    }
+    function safeRemove(key) {
+      try { localStorage.removeItem(key); } catch (e) { delete memoryStore[key]; }
+    }
+
+    const BASE_CATEGORIES = [
+      "Gift", "Dad", "Tithe", "Food", "SGSE", "Option 1", "Accessories",
+      "Accessory", "Transport", "Gadget Sales", "Miscellaneous", "Airtime",
+      "Entertainment", "Family", "Data", "Emergency Fund", "Laptop Upgrade",
+      "Business Capital"
+    ];
+
+    const SEED_GOALS = [
+      { name: "Emergency Fund", target: 1000.00 },
+      { name: "Laptop Upgrade", target: 1500.00 },
+      { name: "Business Capital", target: 2000.00 },
+      { name: "SGSE", target: 500.00 },
+      { name: "Option 1", target: 250.00 }
+    ];
+
+    const QUICK_PRESETS = [
+      { label: "🚕 Transport: Home ↔ Circle", type: "Expense", category: "Transport", description: "Home to Circle", amount: 6.00 },
+      { label: "🎓 Transport: Circle ↔ School", type: "Expense", category: "Transport", description: "Circle to school", amount: 4.00 },
+      { label: "🍛 Food: Lunch & Water", type: "Expense", category: "Food", description: "Lunch and water", amount: 20.00 },
+      { label: "📱 MTN Airtime / Bundle", type: "Expense", category: "Airtime", description: "MTN Airtime & Data", amount: 15.00 },
+      { label: "📦 Accessory: Screen Glass", type: "Expense", category: "Accessory", description: "Screen glass", amount: 20.00 },
+      { label: "🔌 Accessory: Charger (NK)", type: "Expense", category: "Accessories", description: "Charger from NK", amount: 50.00 },
+      { label: "💵 Dad Pocket Money (+$60)", type: "Income", category: "Dad", description: "Pocket", amount: 60.00 },
+      { label: "💻 Gadget Sale (+$150)", type: "Income", category: "Gadget Sales", description: "Device sale profit", amount: 150.00 },
+      { label: "🏦 Save to Emergency Fund", type: "Savings", category: "Emergency Fund", description: "Emergency reserve", amount: 50.00 },
+      { label: "🚀 Save to Business Capital", type: "Savings", category: "Business Capital", description: "Agency & iHub+ capital", amount: 100.00 }
+    ];
+
+    const SEED_TRANSACTIONS = [
+      { date: "2026-05-18", type: "Income", category: "Gift", description: "From Sis P", moneyIn: 200.00, moneyOut: 0 },
+      { date: "2026-05-18", type: "Income", category: "Dad", description: "Pocket", moneyIn: 60.00, moneyOut: 0 },
+      { date: "2026-05-18", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 26.00 },
+      { date: "2026-05-18", type: "Expense", category: "Food", description: "Egg", moneyIn: 0, moneyOut: 60.00 },
+      { date: "2026-05-18", type: "Savings", category: "Option 1", description: "SGSE", moneyIn: 0, moneyOut: 65.00 },
+      { date: "2026-05-18", type: "Expense", category: "Accessories", description: "Charger From Nk", moneyIn: 0, moneyOut: 50.00 },
+      { date: "2026-05-18", type: "Expense", category: "Transport", description: "To Circle", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-18", type: "Expense", category: "Accessory", description: "Screen glass", moneyIn: 0, moneyOut: 20.00 },
+      { date: "2026-05-18", type: "Expense", category: "Transport", description: "From Circle", moneyIn: 0, moneyOut: 18.00 },
+      { date: "2026-05-18", type: "Income", category: "Gadget Sales", description: "Laptop For Nii", moneyIn: 240.00, moneyOut: 0 },
+      { date: "2026-05-19", type: "Savings", category: "SGSE", description: "GSE", moneyIn: 0, moneyOut: 72.00 },
+      { date: "2026-05-19", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 24.00 },
+      { date: "2026-05-19", type: "Income", category: "Gift", description: "Excess", moneyIn: 5.00, moneyOut: 0 },
+      { date: "2026-05-19", type: "Expense", category: "Transport", description: "Home To Circle", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-19", type: "Expense", category: "Food", description: "Breakfast and lunch", moneyIn: 0, moneyOut: 40.00 },
+      { date: "2026-05-19", type: "Expense", category: "Transport", description: "School to circle", moneyIn: 0, moneyOut: 4.00 },
+      { date: "2026-05-19", type: "Expense", category: "Accessory", description: "Screen glass", moneyIn: 0, moneyOut: 20.00 },
+      { date: "2026-05-19", type: "Expense", category: "Transport", description: "Circle to home", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-20", type: "Expense", category: "Transport", description: "Ride to Circle", moneyIn: 0, moneyOut: 15.00 },
+      { date: "2026-05-20", type: "Expense", category: "Accessory", description: "Charger from NK", moneyIn: 0, moneyOut: 50.00 },
+      { date: "2026-05-20", type: "Expense", category: "Accessory", description: "Lens's film", moneyIn: 0, moneyOut: 15.00 },
+      { date: "2026-05-20", type: "Expense", category: "Food", description: "Water", moneyIn: 0, moneyOut: 5.00 },
+      { date: "2026-05-20", type: "Expense", category: "Food", description: "Water", moneyIn: 0, moneyOut: 3.00 },
+      { date: "2026-05-20", type: "Income", category: "Dad", description: "Pocket", moneyIn: 60.00, moneyOut: 0 },
+      { date: "2026-05-20", type: "Savings", category: "SGSE", description: "GSE", moneyIn: 0, moneyOut: 18.00 },
+      { date: "2026-05-20", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-20", type: "Expense", category: "Transport", description: "Circle to home", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-21", type: "Income", category: "Gift", description: "Bra Evans", moneyIn: 50.00, moneyOut: 0 },
+      { date: "2026-05-21", type: "Savings", category: "SGSE", description: "GSE", moneyIn: 0, moneyOut: 15.00 },
+      { date: "2026-05-21", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 5.00 },
+      { date: "2026-05-21", type: "Expense", category: "Transport", description: "Home to School", moneyIn: 0, moneyOut: 10.00 },
+      { date: "2026-05-21", type: "Expense", category: "Food", description: "Lunch", moneyIn: 0, moneyOut: 20.00 },
+      { date: "2026-05-21", type: "Expense", category: "Transport", description: "School to Circle", moneyIn: 0, moneyOut: 4.00 },
+      { date: "2026-05-21", type: "Expense", category: "Miscellaneous", description: "Water & Others", moneyIn: 0, moneyOut: 5.00 },
+      { date: "2026-05-21", type: "Expense", category: "Airtime", description: "Data", moneyIn: 0, moneyOut: 13.00 },
+      { date: "2026-05-21", type: "Income", category: "Dad", description: "Pocket", moneyIn: 60.00, moneyOut: 0 },
+      { date: "2026-05-21", type: "Savings", category: "SGSE", description: "GSE", moneyIn: 0, moneyOut: 18.00 },
+      { date: "2026-05-21", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-21", type: "Expense", category: "Transport", description: "Circle to home", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-21", type: "Expense", category: "Food", description: "Dinner", moneyIn: 0, moneyOut: 15.00 },
+      { date: "2026-05-22", type: "Expense", category: "Transport", description: "Home to circle", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-22", type: "Expense", category: "Transport", description: "Circle to school", moneyIn: 0, moneyOut: 4.00 },
+      { date: "2026-05-22", type: "Expense", category: "Transport", description: "School to circle", moneyIn: 0, moneyOut: 4.00 },
+      { date: "2026-05-22", type: "Expense", category: "Transport", description: "Circle to home", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-23", type: "Income", category: "Dad", description: "Pocket", moneyIn: 60.00, moneyOut: 0 },
+      { date: "2026-05-23", type: "Savings", category: "SGSE", description: "GSE", moneyIn: 0, moneyOut: 18.00 },
+      { date: "2026-05-23", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 6.00 },
+      { date: "2026-05-23", type: "Expense", category: "Transport", description: "To cell meeting", moneyIn: 0, moneyOut: 4.00 },
+      { date: "2026-05-23", type: "Expense", category: "Airtime", description: "Mush up", moneyIn: 0, moneyOut: 10.00 },
+      { date: "2026-05-23", type: "Expense", category: "Entertainment", description: "Miscellaneous", moneyIn: 0, moneyOut: 29.00 },
+      { date: "2026-05-24", type: "Income", category: "Gadget Sales", description: "Ben's watch", moneyIn: 100.00, moneyOut: 0 },
+      { date: "2026-05-24", type: "Savings", category: "SGSE", description: "GSE", moneyIn: 0, moneyOut: 30.00 },
+      { date: "2026-05-24", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 10.00 },
+      { date: "2026-05-24", type: "Expense", category: "Airtime", description: "MTN", moneyIn: 0, moneyOut: 15.00 },
+      { date: "2026-05-25", type: "Expense", category: "Family", description: "Airtime for Lovedey", moneyIn: 0, moneyOut: 5.00 },
+      { date: "2026-05-25", type: "Income", category: "Dad", description: "Pocket", moneyIn: 50.00, moneyOut: 0 },
+      { date: "2026-05-25", type: "Savings", category: "SGSE", description: "GSE", moneyIn: 0, moneyOut: 15.00 },
+      { date: "2026-05-25", type: "Expense", category: "Tithe", description: "To God", moneyIn: 0, moneyOut: 5.00 },
+      { date: "2026-05-25", type: "Expense", category: "Data", description: "Data Package", moneyIn: 0, moneyOut: 60.00 },
+      { date: "2026-06-05", type: "Income", category: "Gift", description: "From Bro Math", moneyIn: 200.00, moneyOut: 0 },
+      { date: "2026-08-30", type: "Expense", category: "Transport", description: "Uber Trip (Independence Ave to Ring Rd W)", moneyIn: 0, moneyOut: 21.00 }
+    ];
+
+    const CHART_COLORS = [
+      "#f43f5e", "#f97316", "#eab308", "#10b981", "#06b6d4",
+      "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"
+    ];
+
+    // =========================================================================
+    // 2. APPLICATION STATE & CORE CALCULATIONS
+    // =========================================================================
+    let transactions = [];
+    let savingsGoals = [];
+    let currencySymbol = "$";
+    let selectedCategoryFilter = null;
+
+    function initData() {
+      const savedTx = safeGet("finledger_v25_tx");
+      const savedGoals = safeGet("finledger_v25_goals");
+      transactions = savedTx ? JSON.parse(savedTx) : JSON.parse(JSON.stringify(SEED_TRANSACTIONS));
+      savingsGoals = savedGoals ? JSON.parse(savedGoals) : JSON.parse(JSON.stringify(SEED_GOALS));
+      recomputeRunningBalance();
+    }
+
+    function persistData() {
+      safeSet("finledger_v25_tx", JSON.stringify(transactions));
+      safeSet("finledger_v25_goals", JSON.stringify(savingsGoals));
+    }
+
+    function recomputeRunningBalance() {
+      let bal = 0;
+      transactions = transactions.map((row) => {
+        const mIn = row.type === "Income" ? Number(row.moneyIn || 0) : 0;
+        const mOut = row.type !== "Income" ? Number(row.moneyOut || 0) : 0;
+        bal = +(bal + mIn - mOut).toFixed(2);
+        return {
+          date: row.date,
+          type: row.type,
+          category: String(row.category || "Miscellaneous").trim(),
+          description: String(row.description || "").trim(),
+          moneyIn: mIn,
+          moneyOut: mOut,
+          balance: bal
+        };
+      });
+    }
+
+    function getEffectiveCategory(rawCat) {
+      const normalize = document.getElementById("normalizeToggle")?.checked;
+      if (!normalize) return rawCat;
+      if (/^accessory$/i.test(rawCat)) return "Accessories";
+      return rawCat;
+    }
+
+    function fmtMoney(val) {
+      const n = Number(val || 0);
+      const sign = n < 0 ? "-" : "";
+      return `${sign}${currencySymbol}${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function getTodayISO() {
+      return new Date().toISOString().split("T")[0];
+    }
+
+    // =========================================================================
+    // 3. MULTI-PAGE ROUTER & UI CONTROLS
+    // =========================================================================
+    const PAGE_TITLES = {
+      command: "1. Command Center (Executive Overview)",
+      logger: "2. Smart Logger & Automation Hub",
+      analytics: "3. Visual Analytics Studio (Charts & Margins)",
+      vault: "4. Savings Vault & Goal Simulator",
+      ledger: "5. Master Ledger Database (Google Sheets Mirror)"
+    };
+
+    function navigateTo(pageKey) {
+      document.querySelectorAll(".page-view").forEach(el => el.classList.remove("active"));
+      const target = document.getElementById(`page-${pageKey}`);
+      if (target) target.classList.add("active");
+
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        if (btn.dataset.page === pageKey) {
+          btn.className = "nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition whitespace-nowrap bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
+        } else {
+          btn.className = "nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent";
+        }
+      });
+
+      document.getElementById("activePageTitle").textContent = PAGE_TITLES[pageKey] || "FinLedger Pro";
+      renderApp();
+    }
+
+    function setCurrency(sym) {
+      currencySymbol = sym;
+      document.getElementById("curUSD").className = sym === "$"
+        ? "px-2.5 py-1 rounded-md bg-emerald-600 text-white font-semibold"
+        : "px-2.5 py-1 rounded-md text-slate-400 hover:text-white";
+      document.getElementById("curGHS").className = sym === "₵"
+        ? "px-2.5 py-1 rounded-md bg-emerald-600 text-white font-semibold"
+        : "px-2.5 py-1 rounded-md text-slate-400 hover:text-white";
+      renderApp();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      document.getElementById("toastMsg").textContent = msg;
+      t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), 3200);
+    }
+
+    // =========================================================================
+    // 4. CONVERSATIONAL PARSER & TRANSACTION INGESTION (WITH AUTO-SPLIT)
+    // =========================================================================
+    function parseNLPInput(rawText) {
+      const text = rawText.trim();
+      const lower = text.toLowerCase();
+
+      const dateMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      const date = dateMatch ? dateMatch[1] : getTodayISO();
+
+      const amtMatch = text.match(/(?:\$|ghs\s?|₵)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)/i);
+      const amount = amtMatch ? parseFloat(amtMatch[1].replace(/,/g, "")) : 0;
+
+      let type = "Expense";
+      if (/\b(saved|save|saving|savings|vault|stash)\b/i.test(lower)) {
+        type = "Savings";
+      } else if (/\b(received|earned|income|got|sold|from dad|from sis|from bro|pocket|gift)\b/i.test(lower)) {
+        type = "Income";
+      }
+
+      const knownCats = [...savingsGoals.map(g => g.name), ...BASE_CATEGORIES].sort((a, b) => b.length - a.length);
+      let category = null;
+      for (const c of knownCats) {
+        const rx = new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "i");
+        if (rx.test(text)) {
+          category = c;
+          break;
+        }
+      }
+
+      if (!category) {
+        if (/\b(uber|bolt|yango|trotro|circle|transport|ride|school)\b/i.test(lower)) category = "Transport";
+        else if (/\b(lunch|dinner|breakfast|egg|water|food|meal)\b/i.test(lower)) category = "Food";
+        else if (/\b(tithe|church|offering)\b/i.test(lower)) category = "Tithe";
+        else if (/\b(mtn|airtime|credit)\b/i.test(lower)) category = "Airtime";
+        else if (/\b(data|bundle)\b/i.test(lower)) category = "Data";
+        else if (/\b(charger|screen|glass|film)\b/i.test(lower)) category = "Accessory";
+        else if (type === "Savings") category = "Emergency Fund";
+        else if (type === "Income") category = "Gift";
+        else category = "Miscellaneous";
+      }
+
+      if (savingsGoals.some(g => g.name.toLowerCase() === category.toLowerCase()) && type !== "Income") {
+        type = "Savings";
+      }
+
+      let description = text
+        .replace(/\b(\d{4}-\d{2}-\d{2})\b/g, "")
+        .replace(/^(spent|paid|bought|received|earned|got|saved|save|saving)\s+/i, "")
+        .replace(/(?:\$|ghs\s?|₵)?\d+(?:,\d{3})*(?:\.\d{1,2})?/i, "")
+        .replace(new RegExp(`\\b(on|for|from|in|to)\\s+${category}\\b`, "i"), "")
+        .replace(new RegExp(`\\b${category}\\b`, "i"), "")
+        .replace(/^\s*(on|for|from|in|to)\s+/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!description) description = type === "Savings" ? `Deposit to ${category}` : category;
+
+      return {
+        date,
+        type,
+        category,
+        description,
+        moneyIn: type === "Income" ? amount : 0,
+        moneyOut: type !== "Income" ? amount : 0
+      };
+    }
+
+    function updateLiveParseCard() {
+      const raw = document.getElementById("nlpPromptInput").value;
+      const curBal = transactions.length ? transactions[transactions.length - 1].balance : 0;
+      if (!raw.trim()) {
+        document.getElementById("pDate").textContent = getTodayISO();
+        document.getElementById("pType").textContent = "—";
+        document.getElementById("pCat").textContent = "—";
+        document.getElementById("pDesc").textContent = "—";
+        document.getElementById("pVal").textContent = `${fmtMoney(0)} → ${fmtMoney(curBal)}`;
+        return;
+      }
+      const p = parseNLPInput(raw);
+      const val = p.type === "Income" ? p.moneyIn : p.moneyOut;
+      const projBal = p.type === "Income" ? curBal + val : curBal - val;
+
+      document.getElementById("pDate").textContent = p.date;
+      document.getElementById("pType").textContent = p.type;
+      document.getElementById("pType").className = `mono font-semibold ${
+        p.type === "Income" ? "text-emerald-400" : p.type === "Savings" ? "text-sky-400" : "text-rose-400"
+      }`;
+      document.getElementById("pCat").textContent = p.category;
+      document.getElementById("pDesc").textContent = `"${p.description}"`;
+      document.getElementById("pVal").textContent = `${fmtMoney(val)} → ${fmtMoney(projBal)}`;
+    }
+
+    function commitTransactionWithRules(tx) {
+      transactions.push(tx);
+      let extraCount = 0;
+
+      // Check 10% Tithe + 30% SGSE Auto-Split on Income
+      const autoSplit = document.getElementById("autoSplitIncome")?.checked;
+      if (tx.type === "Income" && tx.moneyIn > 0 && autoSplit) {
+        const sgseAmt = +(tx.moneyIn * 0.30).toFixed(2);
+        const titheAmt = +(tx.moneyIn * 0.10).toFixed(2);
+        transactions.push({
+          date: tx.date,
+          type: "Savings",
+          category: "SGSE",
+          description: `Auto 30% GSE (${tx.description})`,
+          moneyIn: 0,
+          moneyOut: sgseAmt
+        });
+        transactions.push({
+          date: tx.date,
+          type: "Expense",
+          category: "Tithe",
+          description: `To God (Auto 10% of ${tx.description})`,
+          moneyIn: 0,
+          moneyOut: titheAmt
+        });
+        extraCount = 2;
+      }
+
+      recomputeRunningBalance();
+      persistData();
+      populatePeriodSelector();
+      renderApp();
+
+      if (tx.type === "Savings") triggerConfetti();
+      showToast(extraCount > 0
+        ? `Logged ${tx.category} (+Auto-Split 30% SGSE & 10% Tithe)!`
+        : `Appended ${tx.type}: ${tx.category} (${fmtMoney(tx.type === "Income" ? tx.moneyIn : tx.moneyOut)})`
+      );
+    }
+
+    function submitNLPLogger(e) {
+      e.preventDefault();
+      const input = document.getElementById("nlpPromptInput");
+      const parsed = parseNLPInput(input.value);
+      const amt = parsed.type === "Income" ? parsed.moneyIn : parsed.moneyOut;
+      if (amt <= 0) return alert("Please enter a valid positive amount (e.g. $15).");
+      commitTransactionWithRules(parsed);
+      input.value = "";
+      updateLiveParseCard();
+    }
+
+    function submitManualForm(e) {
+      e.preventDefault();
+      const date = document.getElementById("mDate").value || getTodayISO();
+      const type = document.getElementById("mType").value;
+      const category = document.getElementById("mCat").value.trim();
+      const description = document.getElementById("mDesc").value.trim();
+      const amt = parseFloat(document.getElementById("mAmt").value);
+      if (!category || isNaN(amt) || amt <= 0) return;
+
+      commitTransactionWithRules({
+        date,
+        type,
+        category,
+        description,
+        moneyIn: type === "Income" ? amt : 0,
+        moneyOut: type !== "Income" ? amt : 0
+      });
+
+      document.getElementById("mDesc").value = "";
+      document.getElementById("mAmt").value = "";
+    }
+
+    function setLoggerMode(mode) {
+      const nlpBox = document.getElementById("loggerNLPBox");
+      const formBox = document.getElementById("loggerFormBox");
+      const btnNLP = document.getElementById("btnModeNLP");
+      const btnForm = document.getElementById("btnModeForm");
+
+      if (mode === "NLP") {
+        nlpBox.classList.remove("hidden");
+        formBox.classList.add("hidden");
+        btnNLP.className = "px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold";
+        btnForm.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-semibold";
+      } else {
+        nlpBox.classList.add("hidden");
+        formBox.classList.remove("hidden");
+        btnForm.className = "px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold";
+        btnNLP.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-semibold";
+        document.getElementById("mDate").value = getTodayISO();
+      }
+    }
+
+    function loadSampleUberJSON() {
+      document.getElementById("jsonReceiptInput").value = JSON.stringify({
+        service: "Uber",
+        date: "2026-10-18",
+        amount: "GHS 24.00",
+        pickup: "GCTU Tesano Campus, Accra",
+        dropoff: "Kwame Nkrumah Circle, Accra"
+      });
+    }
+
+    function ingestJSONReceipt() {
+      const raw = document.getElementById("jsonReceiptInput").value.trim();
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        const amtMatch = String(data.amount || "0").match(/(\d+(?:\.\d{1,2})?)/);
+        const amt = amtMatch ? parseFloat(amtMatch[1]) : 0;
+        if (amt <= 0) return alert("Could not extract a positive amount from JSON.");
+
+        let isoDate = getTodayISO();
+        if (data.date) {
+          const parsedD = new Date(data.date);
+          if (!isNaN(parsedD)) isoDate = parsedD.toISOString().split("T")[0];
+        }
+
+        const desc = `${data.service || "Ride"} (${data.pickup || "Pickup"} to ${data.dropoff || "Dropoff"})`;
+        commitTransactionWithRules({
+          date: isoDate,
+          type: "Expense",
+          category: "Transport",
+          description: desc,
+          moneyIn: 0,
+          moneyOut: amt
+        });
+        document.getElementById("jsonReceiptInput").value = "";
+      } catch (e) {
+        alert("Invalid JSON format. Click 'Load Sample Uber JSON' to see the expected structure.");
+      }
+    }
+
+    // =========================================================================
+    // 5. RENDERING ALL 5 PAGES, CHARTS & SIMULATORS
+    // =========================================================================
+    function populatePeriodSelector() {
+      const sel = document.getElementById("globalPeriod");
+      const current = sel.value || "ALL";
+      const months = Array.from(new Set(transactions.map(t => t.date.slice(0, 7)))).sort().reverse();
+      sel.innerHTML = `<option value="ALL">All-Time (${transactions.length} rows)</option>` +
+        months.map(m => `<option value="${m}">Month: ${m}</option>`).join("");
+      if ([...sel.options].some(o => o.value === current)) sel.value = current;
+    }
+
+    function renderQuickPresets() {
+      const container = document.getElementById("quickPresetGrid");
+      container.innerHTML = QUICK_PRESETS.map((p, idx) => {
+        const badgeColor = p.type === "Income"
+          ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+          : p.type === "Savings"
+          ? "text-sky-400 border-sky-500/30 bg-sky-500/10"
+          : "text-rose-400 border-rose-500/30 bg-rose-500/10";
+        const sign = p.type === "Income" ? "+" : "-";
+        return `
+          <button onclick="triggerQuickPreset(${idx})" class="text-left bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 p-3 rounded-xl transition flex items-center justify-between gap-2 group">
+            <div class="min-w-0">
+              <div class="text-xs font-semibold text-slate-200 group-hover:text-white truncate">${p.label}</div>
+              <div class="text-[10px] text-slate-500 truncate">${p.category} • ${p.description}</div>
+            </div>
+            <span class="text-xs mono font-bold px-2 py-0.5 rounded border shrink-0 ${badgeColor}">${sign}${fmtMoney(p.amount)}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function triggerQuickPreset(index) {
+      const p = QUICK_PRESETS[index];
+      if (!p) return;
+      commitTransactionWithRules({
+        date: getTodayISO(),
+        type: p.type,
+        category: p.category,
+        description: p.description,
+        moneyIn: p.type === "Income" ? p.amount : 0,
+        moneyOut: p.type !== "Income" ? p.amount : 0
+      });
+    }
+
+    function renderApp() {
+      const period = document.getElementById("globalPeriod").value;
+      const periodTx = period === "ALL"
+        ? transactions
+        : transactions.filter(t => t.date.startsWith(period));
+
+      // Core Metrics
+      const incomeTx = periodTx.filter(t => t.type === "Income");
+      const expenseTx = periodTx.filter(t => t.type === "Expense");
+      const savingsTx = periodTx.filter(t => t.type === "Savings");
+
+      const totalIncome = incomeTx.reduce((s, t) => s + t.moneyIn, 0);
+      const totalExpense = expenseTx.reduce((s, t) => s + t.moneyOut, 0);
+      const totalSaved = savingsTx.reduce((s, t) => s + t.moneyOut, 0);
+      const latestBalance = transactions.length ? transactions[transactions.length - 1].balance : 0;
+
+      document.getElementById("rowCountBadge").textContent = `${transactions.length} rows`;
+      document.getElementById("sidebarBalance").textContent = fmtMoney(latestBalance);
+
+      // Page 1 KPIs
+      document.getElementById("kpiIncome").textContent = fmtMoney(totalIncome);
+      document.getElementById("kpiIncomeCount").textContent = `${incomeTx.length} income transactions`;
+      document.getElementById("kpiExpense").textContent = fmtMoney(totalExpense);
+      document.getElementById("kpiExpenseCount").textContent = `${expenseTx.length} expense transactions`;
+      document.getElementById("kpiSaved").textContent = fmtMoney(totalSaved);
+      const savRate = totalIncome > 0 ? ((totalSaved / totalIncome) * 100).toFixed(1) : "0.0";
+      document.getElementById("kpiSavingsRate").textContent = `${savRate}% of period income saved`;
+      document.getElementById("kpiBalance").textContent = fmtMoney(latestBalance);
+
+      // Master Savings Progress Bar
+      const allTimeSaved = transactions.filter(t => t.type === "Savings").reduce((s, t) => s + t.moneyOut, 0);
+      const totalTarget = savingsGoals.reduce((s, g) => s + g.target, 0);
+      const masterPct = totalTarget > 0 ? Math.min(100, (allTimeSaved / totalTarget) * 100) : 0;
+      document.getElementById("masterSavedText").textContent = `${fmtMoney(allTimeSaved)} / ${fmtMoney(totalTarget)}`;
+      document.getElementById("masterSavedPct").textContent = `${masterPct.toFixed(1)}%`;
+      document.getElementById("masterProgressBar").style.width = `${Math.max(2, masterPct)}%`;
+
+      renderDailyCashflowChart(periodTx);
+      renderBalanceSparkline(periodTx);
+      renderRecentMiniList();
+      renderAnalyticsStudio(expenseTx, periodTx);
+      renderSavingsVault();
+      updateGoalSimulator();
+      renderMasterLedger(periodTx);
+      populateDatalist();
+      updateLiveParseCard();
+    }
+
+    // Page 1: Daily Cashflow Bar Chart
+    function renderDailyCashflowChart(periodTx) {
+      const byDate = {};
+      periodTx.forEach(t => {
+        if (!byDate[t.date]) byDate[t.date] = { in: 0, out: 0, sav: 0 };
+        if (t.type === "Income") byDate[t.date].in += t.moneyIn;
+        else if (t.type === "Expense") byDate[t.date].out += t.moneyOut;
+        else if (t.type === "Savings") byDate[t.date].sav += t.moneyOut;
+      });
+
+      const dates = Object.keys(byDate).sort().slice(-10);
+      const container = document.getElementById("dailyCashflowChart");
+      if (dates.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 m-auto">No cashflow data for selected period.</p>`;
+        return;
+      }
+
+      const maxVal = Math.max(10, ...dates.map(d => Math.max(byDate[d].in, byDate[d].out, byDate[d].sav)));
+
+      container.innerHTML = dates.map(d => {
+        const row = byDate[d];
+        const inH = Math.round((row.in / maxVal) * 165);
+        const outH = Math.round((row.out / maxVal) * 165);
+        const savH = Math.round((row.sav / maxVal) * 165);
+        return `
+          <div class="flex-1 min-w-[48px] flex flex-col items-center group">
+            <div class="h-44 flex items-end justify-center gap-1 w-full px-1">
+              <div title="Income: ${fmtMoney(row.in)}" class="w-2.5 bg-emerald-500 rounded-t transition-all" style="height: ${Math.max(row.in > 0 ? 4 : 0, inH)}px"></div>
+              <div title="Expense: ${fmtMoney(row.out)}" class="w-2.5 bg-rose-500 rounded-t transition-all" style="height: ${Math.max(row.out > 0 ? 4 : 0, outH)}px"></div>
+              <div title="Savings: ${fmtMoney(row.sav)}" class="w-2.5 bg-sky-400 rounded-t transition-all" style="height: ${Math.max(row.sav > 0 ? 4 : 0, savH)}px"></div>
+            </div>
+            <span class="text-[10px] mono text-slate-400 mt-2">${d.slice(5)}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Page 1: SVG Running Balance Sparkline
+    function renderBalanceSparkline(periodTx) {
+      const box = document.getElementById("balanceSparklineContainer");
+      if (periodTx.length < 2) {
+        box.innerHTML = `<span class="text-xs text-slate-500">Log at least 2 entries to view balance curve.</span>`;
+        return;
+      }
+      const balances = periodTx.map(t => t.balance);
+      const minB = Math.min(0, ...balances);
+      const maxB = Math.max(10, ...balances);
+      const range = maxB - minB || 1;
+
+      const w = 360, h = 100;
+      const pts = balances.map((b, i) => {
+        const x = (i / (balances.length - 1)) * w;
+        const y = h - ((b - minB) / range) * (h - 16) - 8;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+
+      box.innerHTML = `
+        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full overflow-visible">
+          <defs>
+            <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+          <polygon points="0,${h} ${pts} ${w},${h}" fill="url(#balGrad)" />
+          <polyline fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${pts}" />
+        </svg>
+      `;
+    }
+
+    function renderRecentMiniList() {
+      const container = document.getElementById("recentMiniList");
+      const recent = transactions.slice(-4).reverse();
+      container.innerHTML = recent.map(t => {
+        const isInc = t.type === "Income";
+        const val = isInc ? t.moneyIn : t.moneyOut;
+        const color = isInc ? "text-emerald-400" : t.type === "Savings" ? "text-sky-400" : "text-rose-400";
+        return `
+          <div class="flex items-center justify-between text-xs bg-slate-950/70 px-3 py-2 rounded-lg border border-slate-800/80">
+            <div class="truncate pr-2">
+              <span class="font-semibold text-slate-200">${t.category}</span>
+              <span class="text-slate-500 ml-1">• ${t.description}</span>
+            </div>
+            <span class="mono font-semibold ${color} shrink-0">${isInc ? "+" : "-"}${fmtMoney(val)}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Page 3: Visual Analytics Studio (SVG Donut + Ranked Bar Chart + Gadget Margin)
+    function renderAnalyticsStudio(expenseTx, periodTx) {
+      const excludeInv = document.getElementById("excludeInventoryToggle")?.checked;
+      const filteredExpenses = expenseTx.filter(t => {
+        const c = getEffectiveCategory(t.category);
+        if (excludeInv && /^accessories|accessory$/i.test(c)) return false;
+        return true;
+      });
+
+      const catTotals = {};
+      filteredExpenses.forEach(t => {
+        const c = getEffectiveCategory(t.category);
+        catTotals[c] = (catTotals[c] || 0) + t.moneyOut;
+      });
+
+      const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+      const grandTotal = sorted.reduce((s, [, v]) => s + v, 0);
+
+      document.getElementById("donutCenterLabel").textContent = "Total Spent";
+      document.getElementById("donutCenterValue").textContent = fmtMoney(grandTotal);
+      document.getElementById("donutCenterPct").textContent = `${sorted.length} Categories`;
+
+      // Build SVG Donut
+      const svg = document.getElementById("expenseDonutSVG");
+      const legend = document.getElementById("donutLegend");
+
+      if (sorted.length === 0 || grandTotal === 0) {
+        svg.innerHTML = `<circle cx="0" cy="0" r="0.85" fill="none" stroke="#1e293b" stroke-width="0.28" />`;
+        legend.innerHTML = `<span class="col-span-2 text-center text-slate-500">No expenses in current view.</span>`;
+      } else {
+        let cumulativeAngle = 0;
+        svg.innerHTML = sorted.map(([cat, val], idx) => {
+          const slicePct = val / grandTotal;
+          const startAngle = cumulativeAngle;
+          const endAngle = cumulativeAngle + slicePct * Math.PI * 2;
+          cumulativeAngle = endAngle;
+
+          // Full circle edge case
+          if (slicePct >= 0.999) {
+            return `<circle cx="0" cy="0" r="0.82" fill="none" stroke="${CHART_COLORS[idx % CHART_COLORS.length]}" stroke-width="0.32" />`;
+          }
+
+          const x1 = Math.cos(startAngle) * 0.82;
+          const y1 = Math.sin(startAngle) * 0.82;
+          const x2 = Math.cos(endAngle) * 0.82;
+          const y2 = Math.sin(endAngle) * 0.82;
+          const largeArc = slicePct > 0.5 ? 1 : 0;
+          const color = CHART_COLORS[idx % CHART_COLORS.length];
+
+          return `
+            <path
+              d="M ${x1} ${y1} A 0.82 0.82 0 ${largeArc} 1 ${x2} ${y2}"
+              fill="none"
+              stroke="${color}"
+              stroke-width="0.32"
+              class="donut-slice"
+              onmouseenter="previewDonutSlice('${cat.replace(/'/g, "\\'")}', ${val}, ${(slicePct * 100).toFixed(1)})"
+              onclick="filterLedgerByCategory('${cat.replace(/'/g, "\\'")}')"
+            />
+          `;
+        }).join("");
+
+        legend.innerHTML = sorted.slice(0, 8).map(([cat, val], idx) => {
+          const pct = ((val / grandTotal) * 100).toFixed(1);
+          const color = CHART_COLORS[idx % CHART_COLORS.length];
+          return `
+            <button onclick="filterLedgerByCategory('${cat.replace(/'/g, "\\'")}')" class="flex items-center justify-between bg-slate-950/70 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-800/80 text-left transition">
+              <span class="flex items-center gap-1.5 truncate">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${color}"></span>
+                <span class="text-slate-200 font-medium truncate">${cat}</span>
+              </span>
+              <span class="mono text-[11px] text-slate-400 ml-1">${pct}%</span>
+            </button>
+          `;
+        }).join("");
+      }
+
+      // Ranked Horizontal Bar Chart
+      const barBox = document.getElementById("analyticsBarChart");
+      barBox.innerHTML = sorted.map(([cat, val], idx) => {
+        const pct = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(1) : 0;
+        const color = CHART_COLORS[idx % CHART_COLORS.length];
+        return `
+          <div onclick="filterLedgerByCategory('${cat.replace(/'/g, "\\'")}')" class="group cursor-pointer bg-slate-950/60 hover:bg-slate-800/50 p-3 rounded-xl border border-slate-800/80 transition">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="font-semibold text-slate-200 group-hover:text-emerald-300">${idx + 1}. ${cat}</span>
+              <span class="mono text-slate-300 font-semibold">${fmtMoney(val)} <span class="text-slate-500">(${pct}%)</span></span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+              <div class="h-full rounded-full progress-fill" style="width:${Math.max(2, pct)}%; background:${color}"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // Gadget Flipping Margin Card
+      const gadgetRev = periodTx
+        .filter(t => t.type === "Income" && /gadget/i.test(t.category))
+        .reduce((s, t) => s + t.moneyIn, 0);
+      const gadgetCost = periodTx
+        .filter(t => t.type === "Expense" && /accessor/i.test(t.category))
+        .reduce((s, t) => s + t.moneyOut, 0);
+      const net = gadgetRev - gadgetCost;
+      const margin = gadgetRev > 0 ? ((net / gadgetRev) * 100).toFixed(1) : "0.0";
+
+      document.getElementById("gadgetRev").textContent = fmtMoney(gadgetRev);
+      document.getElementById("gadgetCost").textContent = fmtMoney(gadgetCost);
+      document.getElementById("gadgetMarginPct").textContent = `${margin}%`;
+      document.getElementById("gadgetNetBadge").textContent = `Net ${net >= 0 ? "+" : ""}${fmtMoney(net)}`;
+    }
+
+    function previewDonutSlice(cat, val, pct) {
+      document.getElementById("donutCenterLabel").textContent = cat;
+      document.getElementById("donutCenterValue").textContent = fmtMoney(val);
+      document.getElementById("donutCenterPct").textContent = `${pct}% of Expenses`;
+      document.getElementById("donutSliceBadge").textContent = cat;
+    }
+
+    function filterLedgerByCategory(cat) {
+      selectedCategoryFilter = cat;
+      document.getElementById("clearCategoryFilterBtn").classList.remove("hidden");
+      document.getElementById("clearCategoryFilterBtn").textContent = `Category: ${cat} ✕`;
+      navigateTo("ledger");
+    }
+
+    function clearCategoryFilter() {
+      selectedCategoryFilter = null;
+      document.getElementById("clearCategoryFilterBtn").classList.add("hidden");
+      renderApp();
+    }
+
+    // Page 4: Savings Vault & Goal Simulator
+    function renderSavingsVault() {
+      const grid = document.getElementById("vaultGoalsGrid");
+      grid.innerHTML = savingsGoals.map((g, idx) => {
+        const saved = transactions
+          .filter(t => t.type === "Savings" && t.category.toLowerCase() === g.name.toLowerCase())
+          .reduce((s, t) => s + t.moneyOut, 0);
+        const remaining = Math.max(0, g.target - saved);
+        const pct = g.target > 0 ? Math.min(100, (saved / g.target) * 100) : 0;
+
+        return `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-bold text-white">${g.name}</h4>
+                <span class="text-xs mono font-bold px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">${pct.toFixed(1)}%</span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 my-3 text-xs bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <div>
+                  <span class="text-[10px] text-slate-500 block">Target</span>
+                  <span class="mono font-semibold text-slate-200">${fmtMoney(g.target)}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-500 block">Saved</span>
+                  <span class="mono font-bold text-sky-400">${fmtMoney(saved)}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-500 block">Remaining</span>
+                  <span class="mono font-semibold text-slate-400">${fmtMoney(remaining)}</span>
+                </div>
+              </div>
+
+              <!-- Goal Completion Bar -->
+              <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                <div class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 rounded-full progress-fill" style="width:${Math.max(2, pct)}%"></div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+              <button onclick="quickDepositToGoal('${g.name.replace(/'/g, "\\'")}', 25)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-lg transition">
+                +${currencySymbol}25
+              </button>
+              <button onclick="quickDepositToGoal('${g.name.replace(/'/g, "\\'")}', 100)" class="flex-1 bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-semibold py-2 rounded-lg transition">
+                +${currencySymbol}100
+              </button>
+              <button onclick="customDepositToGoal('${g.name.replace(/'/g, "\\'")}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition">
+                Custom
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function quickDepositToGoal(goalName, amount) {
+      commitTransactionWithRules({
+        date: getTodayISO(),
+        type: "Savings",
+        category: goalName,
+        description: `Vault deposit to ${goalName}`,
+        moneyIn: 0,
+        moneyOut: amount
+      });
+    }
+
+    function customDepositToGoal(goalName) {
+      const val = prompt(`Enter amount to deposit into "${goalName}":`, "50");
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) return;
+      quickDepositToGoal(goalName, num);
+    }
+
+    function addNewSavingsGoal() {
+      const name = prompt("Enter new Savings Goal Name (e.g. Agency Marketing Fund):");
+      if (!name || !name.trim()) return;
+      const tStr = prompt(`Enter Target Amount for "${name.trim()}":`, "1000");
+      const target = parseFloat(tStr);
+      if (isNaN(target) || target <= 0) return;
+      savingsGoals.push({ name: name.trim(), target });
+      persistData();
+      renderApp();
+      showToast(`Created goal: ${name.trim()} (${fmtMoney(target)})`);
+    }
+
+    function reallocateSGSEToGoal() {
+      const dest = prompt(
+        "Which primary goal should receive your existing SGSE & Option 1 savings ($251.00)?\nType one of: Emergency Fund, Laptop Upgrade, Business Capital",
+        "Emergency Fund"
+      );
+      if (!dest || !dest.trim()) return;
+      let count = 0;
+      transactions = transactions.map(t => {
+        if (t.type === "Savings" && /^(sgse|option 1)$/i.test(t.category)) {
+          count++;
+          return { ...t, category: dest.trim(), description: `${t.description} (Mapped to ${dest.trim()})` };
+        }
+        return t;
+      });
+      if (count === 0) return alert("No SGSE or Option 1 rows left to reallocate.");
+      recomputeRunningBalance();
+      persistData();
+      renderApp();
+      triggerConfetti();
+      showToast(`Reallocated ${count} savings rows ($251.00) to ${dest.trim()}!`);
+    }
+
+    function updateGoalSimulator() {
+      const weekly = parseFloat(document.getElementById("simWeeklySlider")?.value || 50);
+      const boost = parseFloat(document.getElementById("simBoostSlider")?.value || 100);
+      const monthlyRate = weekly * 4.33;
+
+      document.getElementById("simWeeklyVal").textContent = `${fmtMoney(weekly)} / wk`;
+      document.getElementById("simBoostVal").textContent = fmtMoney(boost);
+      document.getElementById("simSummaryBadge").textContent = `${fmtMoney(monthlyRate)} / month + ${fmtMoney(boost)} boost`;
+
+      const primaryGoals = savingsGoals.slice(0, 3);
+      const grid = document.getElementById("simResultsGrid");
+      grid.innerHTML = primaryGoals.map(g => {
+        const saved = transactions
+          .filter(t => t.type === "Savings" && t.category.toLowerCase() === g.name.toLowerCase())
+          .reduce((s, t) => s + t.moneyOut, 0);
+        const remAfterBoost = Math.max(0, g.target - saved - boost);
+        const weeksNeeded = remAfterBoost > 0 ? Math.ceil(remAfterBoost / weekly) : 0;
+
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + weeksNeeded * 7);
+        const dateStr = weeksNeeded === 0 ? "Completed Immediately! 🎉" : targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+        return `
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+            <span class="text-xs font-bold text-white block">${g.name}</span>
+            <span class="text-[11px] text-slate-400 block mt-0.5">Remaining after boost: ${fmtMoney(remAfterBoost)}</span>
+            <div class="mt-2 pt-2 border-t border-slate-800/80">
+              <span class="text-sm font-extrabold mono text-emerald-400 block">${weeksNeeded} weeks</span>
+              <span class="text-[11px] text-sky-300">Est. Date: ${dateStr}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Page 5: Master Ledger Database
+    function renderMasterLedger(periodTx) {
+      const q = (document.getElementById("ledgerSearch")?.value || "").toLowerCase().trim();
+      const typeF = document.getElementById("ledgerTypeFilter")?.value || "ALL";
+
+      const rows = periodTx.filter(t => {
+        const effCat = getEffectiveCategory(t.category);
+        if (selectedCategoryFilter && effCat.toLowerCase() !== selectedCategoryFilter.toLowerCase()) return false;
+        if (typeF !== "ALL" && t.type !== typeF) return false;
+        if (q && !t.category.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q) && !t.date.includes(q)) return false;
+        return true;
+      });
+
+      const tbody = document.getElementById("masterLedgerBody");
+      tbody.innerHTML = rows.slice().reverse().map(t => {
+        const idx = transactions.indexOf(t);
+        const badge = t.type === "Income"
+          ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+          : t.type === "Savings"
+          ? "bg-sky-500/15 text-sky-300 border-sky-500/30"
+          : "bg-rose-500/15 text-rose-300 border-rose-500/30";
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-2.5 px-3 mono text-slate-500">${idx + 1}</td>
+            <td class="py-2.5 px-3 mono text-slate-300 whitespace-nowrap">${t.date}</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded border text-[11px] font-semibold ${badge}">${t.type}</span></td>
+            <td class="py-2.5 px-3 font-semibold text-slate-200">${getEffectiveCategory(t.category)}</td>
+            <td class="py-2.5 px-3 text-slate-400">${t.description}</td>
+            <td class="py-2.5 px-3 text-right mono text-emerald-400">${t.type === "Income" ? fmtMoney(t.moneyIn) : ""}</td>
+            <td class="py-2.5 px-3 text-right mono ${t.type === "Savings" ? "text-sky-400" : "text-rose-400"}">${t.type !== "Income" ? fmtMoney(t.moneyOut) : ""}</td>
+            <td class="py-2.5 px-3 text-right mono font-bold text-white">${fmtMoney(t.balance)}</td>
+            <td class="py-2.5 px-3 text-center">
+              <button onclick="deleteLedgerRow(${idx})" class="text-slate-500 hover:text-rose-400 text-xs px-2 py-0.5 rounded">✕</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function deleteLedgerRow(idx) {
+      if (idx < 0 || idx >= transactions.length) return;
+      transactions.splice(idx, 1);
+      recomputeRunningBalance();
+      persistData();
+      renderApp();
+      showToast("Deleted row and recalculated running balances.");
+    }
+
+    function populateDatalist() {
+      const dl = document.getElementById("allCategoriesDatalist");
+      if (!dl) return;
+      const cats = Array.from(new Set([...BASE_CATEGORIES, ...savingsGoals.map(g => g.name), ...transactions.map(t => t.category)]));
+      dl.innerHTML = cats.map(c => `<option value="${c}"></option>`).join("");
+    }
+
+    function exportLedgerCSV() {
+      const headers = ["Date", "Type", "Category", "Description", "Money In", "Money Out", "Balance"];
+      const csvRows = transactions.map(t => [
+        t.date,
+        t.type,
+        `"${t.category.replace(/"/g, '""')}"`,
+        `"${t.description.replace(/"/g, '""')}"`,
+        t.type === "Income" ? t.moneyIn.toFixed(2) : "",
+        t.type !== "Income" ? t.moneyOut.toFixed(2) : "",
+        t.balance.toFixed(2)
+      ]);
+      const csv = [headers.join(","), ...csvRows.map(r => r.join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `FinLedger_Transactions_${getTodayISO()}.csv`;
+      a.click();
+    }
+
+    function resetAllData() {
+      if (!confirm("Reset all transactions and goals back to your original 61-row Google Sheets ledger?")) return;
+      safeRemove("finledger_v25_tx");
+      safeRemove("finledger_v25_goals");
+      selectedCategoryFilter = null;
+      initData();
+      populatePeriodSelector();
+      renderApp();
+      showToast("Ledger restored to original 61 Google Sheet rows.");
+    }
+
+    // Lightweight Confetti Celebration on Savings Deposits
+    function triggerConfetti() {
+      const canvas = document.getElementById("confettiCanvas");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const pieces = Array.from({ length: 45 }, () => ({
+        x: Math.random() * canvas.width,
+        y: -20 - Math.random() * 100,
+        size: 5 + Math.random() * 6,
+        vy: 3 + Math.random() * 4,
+        vx: -2 + Math.random() * 4,
+        color: CHART_COLORS[Math.floor(Math.random() * CHART_COLORS.length)]
+      }));
+
+      let frame = 0;
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+        });
+        frame++;
+        if (frame < 55) requestAnimationFrame(draw);
+        else ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      requestAnimationFrame(draw);
+    }
+
+    // Boot Application
+    initData();
+    populatePeriodSelector();
+    renderQuickPresets();
+    renderApp();
+  </script>
+</body>
+</html>
